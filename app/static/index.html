@@ -13,17 +13,56 @@
   </header>
 
   <main class="content">
-    <div class="chips" id="chips"></div>
-    <div class="grid" id="grid"></div>
-    <p class="empty hidden" id="empty">No Products Found</p>
-    <button class="load-more hidden" id="load-more">Load more</button>
+
+    <!-- HOME -->
+    <section id="screen-home">
+      <div class="chips" id="chips"></div>
+      <div class="grid" id="grid"></div>
+      <p class="empty hidden" id="empty">No products found</p>
+      <button class="load-more hidden" id="load-more">Load more</button>
+    </section>
+
+    <!-- CART -->
+    <section id="screen-cart" class="hidden">
+      <h2>Your cart</h2>
+      <div id="cart-items"></div>
+      <div id="cart-summary" class="cart-summary hidden">
+        <div class="cart-total"><span>Total</span><b id="cart-total">₹0</b></div>
+        <button class="primary" disabled>Checkout (coming in Stage 7)</button>
+      </div>
+    </section>
+
+    <!-- ACCOUNT -->
+    <section id="screen-account" class="hidden">
+      <div id="auth-box" class="card">
+        <div class="tabs">
+          <button class="tab active" id="tab-login">Login</button>
+          <button class="tab" id="tab-register">Register</button>
+        </div>
+        <input id="name" class="field hidden" placeholder="Full name">
+        <input id="email" class="field" type="email" placeholder="Email">
+        <input id="password" class="field" type="password" placeholder="Password (min 6 characters)">
+        <button class="primary" id="auth-submit">Login</button>
+        <p class="error" id="auth-error"></p>
+      </div>
+
+      <div id="profile-box" class="card hidden">
+        <h3 id="profile-name"></h3>
+        <p class="muted" id="profile-email"></p>
+        <p class="muted">Role: <span id="profile-role"></span></p>
+        <button class="primary" id="logout-btn">Logout</button>
+      </div>
+    </section>
+
   </main>
 
+  <div class="toast hidden" id="toast"></div>
+
   <nav class="bottom-nav">
-    <a class="active">Home</a>
-    <a>Cart</a>
-    <a>Orders</a>
-    <a>Account</a>
+    <a data-screen="home" class="active">Home</a>
+    <a data-screen="cart">Cart <span class="badge hidden" id="cart-badge">0</span></a>
+    <a data-screen="orders">Orders</a>
+    <a data-screen="account">Account</a>
   </nav>
 
   <script src="/static/app.js"></script>

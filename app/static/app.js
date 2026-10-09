@@ -1,19 +1,263 @@
-// ---------- chhote helpers ----------
+// ================= chhote helpers =================
+function el(id) {
+  return document.getElementById(id);
+}
+
 function money(n) {
   return "₹" + Number(n).toLocaleString("en-IN");
 }
 
-// admin ka likha text page me daalne se pehle safe bana deta hai
+// admin ya user ka likha text page me daalne se pehle safe bana deta hai
 function esc(text) {
   const d = document.createElement("div");
   d.textContent = text;
   return d.innerHTML.replace(/"/g, "&quot;");
 }
 
-// ---------- state: app ki yaaddaasht ----------
-const state = { category: null, search: "", page: 1, pageSize: 10, total: 0 };
+// chhota popup message
+let toastTimer = null;
+function toast(message) {
+  const box = el("toast");
+  box.textContent = message;
+  box.classList.remove("hidden");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.classList.add("hidden"), 2500);
+}
 
-// ---------- ek product ka card ----------
+// ================= app ki yaaddaasht =================
+const state = {
+  category: null,
+  search: "",
+  page: 1,
+  pageSize: 10,
+  total: 0,
+  user: null,
+  authMode: "login"
+};
+
+// ================= server se baat (token ke saath) =================
+async function api(path, options = {}) {
+  const token = localStorage.getItem("shopkaro_token");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers["Authorization"] = "Bearer " + token;
+
+  const res = await fetch(path, { ...options, headers });
+
+  let data = null;
+  try {
+    data = await res.json();
+  } catch (e) {}
+
+  if (!res.ok) {
+    if ((res.status === 401 || res.status === 403) && token) {
+      logout();   // token expire ya galat
+    }
+    let detail = "Something went wrong";
+    if (data && typeof data.detail === "string") {
+      detail = data.detail;
+    } else if (data && Array.isArray(data.detail) && data.detail[0]) {
+      detail = data.detail[0].msg;
+    }
+    throw new Error(detail);
+  }
+  return data;
+}
+
+// ================= screens (Home, Cart, Account) =================
+function showScreen(name) {
+  ["home", "cart", "account"].forEach(s => {
+    el("screen-" + s).classList.toggle("hidden", s !== name);
+  });
+  document.querySelectorAll(".bottom-nav a").forEach(a => {
+    a.classList.toggle("active", a.dataset.screen === name);
+  });
+  if (name === "cart") loadCart();
+  if (name === "account") renderAccount();
+}
+
+document.querySelectorAll(".bottom-nav a").forEach(a => {
+  a.addEventListener("click", () => {
+    const screen = a.dataset.screen;
+    if (screen === "orders") {
+      toast("Orders will be added in Stage 8");
+      return;
+    }
+    showScreen(screen);
+  });
+});
+
+// ================= account: login, register, logout =================
+function renderAccount() {
+  const loggedIn = !!state.user;
+  el("auth-box").classList.toggle("hidden", loggedIn);
+  el("profile-box").classList.toggle("hidden", !loggedIn);
+  if (loggedIn) {
+    el("profile-name").textContent = state.user.name;
+    el("profile-email").textContent = state.user.email;
+    el("profile-role").textContent = state.user.role;
+  }
+}
+
+function setAuthMode(mode) {
+  state.authMode = mode;
+  el("tab-login").classList.toggle("active", mode === "login");
+  el("tab-register").classList.toggle("active", mode === "register");
+  el("name").classList.toggle("hidden", mode === "login");
+  el("auth-submit").textContent = mode === "login" ? "Login" : "Create account";
+  el("auth-error").textContent = "";
+}
+
+async function submitAuth() {
+  const err = el("auth-error");
+  err.textContent = "";
+  const email = el("email").value.trim();
+  const password = el("password").value;
+
+  try {
+    if (state.authMode === "register") {
+      const name = el("name").value.trim();
+      if (!name) {
+        err.textContent = "Please enter your name";
+        return;
+      }
+      await api("/register", { method: "POST", body: JSON.stringify({ name, email, password }) });
+    }
+
+    const data = await api("/login", { method: "POST", body: JSON.stringify({ email, password }) });
+    localStorage.setItem("shopkaro_token", data.access_token);
+    await loadUser();
+    el("password").value = "";
+    toast("Welcome!");
+    showScreen("home");
+  } catch (e) {
+    err.textContent = e.message;
+  }
+}
+
+async function loadUser() {
+  if (!localStorage.getItem("shopkaro_token")) {
+    state.user = null;
+    updateCartBadge(0);
+    return;
+  }
+  try {
+    state.user = await api("/me");
+    const cart = await api("/cart");
+    updateCartBadge(cart.item_count);
+  } catch (e) {
+    state.user = null;
+  }
+}
+
+function logout() {
+  localStorage.removeItem("shopkaro_token");
+  state.user = null;
+  updateCartBadge(0);
+  renderAccount();
+}
+
+el("tab-login").addEventListener("click", () => setAuthMode("login"));
+el("tab-register").addEventListener("click", () => setAuthMode("register"));
+el("auth-submit").addEventListener("click", submitAuth);
+el("logout-btn").addEventListener("click", () => {
+  logout();
+  toast("Logged out");
+  showScreen("account");
+});
+
+// ================= cart =================
+function updateCartBadge(count) {
+  const badge = el("cart-badge");
+  badge.textContent = count;
+  badge.classList.toggle("hidden", count === 0);
+}
+
+async function addToCart(productId) {
+  if (!state.user) {
+    toast("Please log in first");
+    showScreen("account");
+    return;
+  }
+  try {
+    const cart = await api("/cart/items", {
+      method: "POST",
+      body: JSON.stringify({ product_id: productId, quantity: 1 })
+    });
+    updateCartBadge(cart.item_count);
+    toast("Added to cart");
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function cartRow(i) {
+  return `
+    <div class="cart-row">
+      <div class="cart-info">
+        <div class="cart-name">${esc(i.name)}</div>
+        <div class="cart-price">${money(i.price)} each</div>
+        <div class="cart-actions">
+          <button class="qty-btn" data-action="dec" data-id="${i.product_id}" data-qty="${i.quantity}">-</button>
+          <span>${i.quantity}</span>
+          <button class="qty-btn" data-action="inc" data-id="${i.product_id}" data-qty="${i.quantity}">+</button>
+          <button class="remove-btn" data-action="remove" data-id="${i.product_id}">Remove</button>
+        </div>
+      </div>
+      <div class="cart-line-total">${money(i.line_total)}</div>
+    </div>`;
+}
+
+async function loadCart() {
+  const box = el("cart-items");
+  const summary = el("cart-summary");
+
+  if (!state.user) {
+    box.innerHTML = '<p class="empty">Please log in to see your cart</p>';
+    summary.classList.add("hidden");
+    return;
+  }
+
+  try {
+    const cart = await api("/cart");
+    updateCartBadge(cart.item_count);
+
+    if (cart.items.length === 0) {
+      box.innerHTML = '<p class="empty">Your cart is empty</p>';
+      summary.classList.add("hidden");
+      return;
+    }
+
+    box.innerHTML = cart.items.map(cartRow).join("");
+    el("cart-total").textContent = money(cart.total);
+    summary.classList.remove("hidden");
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+// cart ke +, -, Remove buttons (ek hi "kaan" poori list pe)
+el("cart-items").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+  const qty = parseInt(btn.dataset.qty);
+  const action = btn.dataset.action;
+
+  try {
+    if (action === "remove" || (action === "dec" && qty <= 1)) {
+      await api("/cart/items/" + id, { method: "DELETE" });
+    } else {
+      const newQty = action === "inc" ? qty + 1 : qty - 1;
+      await api("/cart/items/" + id, { method: "PUT", body: JSON.stringify({ quantity: newQty }) });
+    }
+    loadCart();
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+// ================= products (home screen) =================
 function productCard(p) {
   const image = p.image_url
     ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`
@@ -26,21 +270,23 @@ function productCard(p) {
     note = `<div class="stock-note">Only ${p.stock} left</div>`;
   }
 
+  const disabled = p.stock === 0 ? "disabled" : "";
+
   return `
     <div class="product">
       <div class="img">${image}</div>
       <div class="name">${esc(p.name)}</div>
       <div class="price">${money(p.price)}</div>
       ${note}
+      <button class="add-btn" data-id="${p.id}" ${disabled}>Add to cart</button>
     </div>`;
 }
 
-// ---------- category chips ----------
 async function loadCategories() {
   const res = await fetch("/categories");
   const categories = await res.json();
 
-  const chips = document.getElementById("chips");
+  const chips = el("chips");
   chips.innerHTML =
     '<span class="chip active" data-id="">All</span>' +
     categories.map(c => `<span class="chip" data-id="${c.id}">${esc(c.name)}</span>`).join("");
@@ -55,9 +301,8 @@ async function loadCategories() {
   });
 }
 
-// ---------- products (reset = true matlab shuru se) ----------
 async function loadProducts(reset) {
-  const grid = document.getElementById("grid");
+  const grid = el("grid");
 
   if (reset) {
     state.page = 1;
@@ -75,13 +320,20 @@ async function loadProducts(reset) {
   grid.insertAdjacentHTML("beforeend", data.items.map(productCard).join(""));
 
   const shown = grid.children.length;
-  document.getElementById("empty").classList.toggle("hidden", data.total !== 0);
-  document.getElementById("load-more").classList.toggle("hidden", shown >= data.total);
+  el("empty").classList.toggle("hidden", data.total !== 0);
+  el("load-more").classList.toggle("hidden", shown >= data.total);
 }
 
-// ---------- search: typing rukne ke 0.4 second baad hi API bulao ----------
+// "Add to cart" button (poore grid pe ek hi kaan)
+el("grid").addEventListener("click", (e) => {
+  const btn = e.target.closest(".add-btn");
+  if (btn) addToCart(parseInt(btn.dataset.id));
+});
+
+// search: typing rukne ke 0.4 second baad hi API bulao
 let searchTimer = null;
-document.getElementById("search").addEventListener("input", (e) => {
+el("search").addEventListener("input", (e) => {
+  showScreen("home");
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     state.search = e.target.value.trim();
@@ -89,12 +341,17 @@ document.getElementById("search").addEventListener("input", (e) => {
   }, 400);
 });
 
-// ---------- Load more button ----------
-document.getElementById("load-more").addEventListener("click", () => {
+el("load-more").addEventListener("click", () => {
   state.page += 1;
   loadProducts(false);
 });
 
-// ---------- page khulte hi ----------
-loadCategories();
-loadProducts(true);
+// ================= page khulte hi =================
+async function init() {
+  setAuthMode("login");
+  await loadUser();
+  loadCategories();
+  loadProducts(true);
+}
+
+init();
