@@ -3,19 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#4f46e5">
   <title>ShopKaro</title>
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <header class="topbar">
-    <h1>ShopKaro</h1>
-    <input class="search" id="search" placeholder="Search products">
+    <div class="topbar-inner">
+      <div class="topbar-row">
+        <div class="logo">
+          <span class="logo-mark">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          </span>
+          <span class="logo-text">Shop<b>Karo</b></span>
+        </div>
+        <button class="icon-btn" id="top-cart" aria-label="Open cart">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+          <span class="badge hidden" id="cart-badge-top">0</span>
+        </button>
+      </div>
+      <div class="search-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search" id="search" placeholder="Search for products">
+      </div>
+    </div>
   </header>
 
   <main class="content">
 
     <!-- HOME -->
     <section id="screen-home">
+      <div class="hero">
+        <h2>Shop smart, pay on delivery</h2>
+        <p>Fresh picks across mobiles, fashion, home and books</p>
+      </div>
       <div class="chips" id="chips"></div>
       <div class="grid" id="grid"></div>
       <p class="empty hidden" id="empty">No products found</p>
@@ -32,7 +53,7 @@
       </div>
     </section>
 
-    <!-- CHECKOUT (NAYA) -->
+    <!-- CHECKOUT -->
     <section id="screen-checkout" class="hidden">
       <h2>Checkout</h2>
       <div class="card">
@@ -51,7 +72,7 @@
       </div>
     </section>
 
-    <!-- ORDER PLACED (NAYA) -->
+    <!-- ORDER PLACED -->
     <section id="screen-confirm" class="hidden">
       <div class="card confirm">
         <h2>Order placed!</h2>
@@ -90,10 +111,25 @@
   <div class="toast hidden" id="toast"></div>
 
   <nav class="bottom-nav">
-    <a data-screen="home" class="active">Home</a>
-    <a data-screen="cart">Cart <span class="badge hidden" id="cart-badge">0</span></a>
-    <a data-screen="orders">Orders</a>
-    <a data-screen="account">Account</a>
+    <a data-screen="home" class="active">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a data-screen="cart">
+      <span class="icon-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="badge hidden" id="cart-badge">0</span>
+      </span>
+      <span>Cart</span>
+    </a>
+    <a data-screen="orders">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span>Orders</span>
+    </a>
+    <a data-screen="account">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Account</span>
+    </a>
   </nav>
 
   <script src="/static/app.js"></script>

@@ -32,7 +32,8 @@ const state = {
   pageSize: 10,
   total: 0,
   user: null,
-  authMode: "login"
+  authMode: "login",
+  requestId: 0   // NAYA: purane search ke jawab ko pehchanne ke liye
 };
 
 // ================= server se baat (token ke saath) =================
@@ -64,14 +65,14 @@ async function api(path, options = {}) {
 }
 
 // ================= screens =================
-const SCREENS = ["home", "cart", "account", "checkout", "confirm"];  // NAYA: checkout, confirm
+const SCREENS = ["home", "cart", "account", "checkout", "confirm"];
 
 function showScreen(name) {
   SCREENS.forEach(s => {
     el("screen-" + s).classList.toggle("hidden", s !== name);
   });
 
-  // NAYA: checkout pe Cart tab, confirm pe Home tab chamakta rahe
+  // checkout pe Cart tab, confirm pe Home tab chamakta rahe
   const navName = name === "checkout" ? "cart" : name === "confirm" ? "home" : name;
   document.querySelectorAll(".bottom-nav a").forEach(a => {
     a.classList.toggle("active", a.dataset.screen === navName);
@@ -92,6 +93,9 @@ document.querySelectorAll(".bottom-nav a").forEach(a => {
     showScreen(screen);
   });
 });
+
+// NAYA: upar ke cart icon se bhi cart khule
+el("top-cart").addEventListener("click", () => showScreen("cart"));
 
 // ================= account: login, register, logout =================
 function renderAccount() {
@@ -160,7 +164,6 @@ function logout() {
   localStorage.removeItem("shopkaro_token");
   state.user = null;
   updateCartBadge(0);
-  // NAYA: checkout ka bhara hua address agle user ko na dikhe
   ["co-name", "co-phone", "co-address", "co-city", "co-pincode"].forEach(id => {
     el(id).value = "";
   });
@@ -177,10 +180,13 @@ el("logout-btn").addEventListener("click", () => {
 });
 
 // ================= cart =================
+// NAYA: ab do jagah badge hai (upar icon aur neeche bar), dono update hote hain
 function updateCartBadge(count) {
-  const badge = el("cart-badge");
-  badge.textContent = count;
-  badge.classList.toggle("hidden", count === 0);
+  ["cart-badge", "cart-badge-top"].forEach(id => {
+    const badge = el(id);
+    badge.textContent = count;
+    badge.classList.toggle("hidden", count === 0);
+  });
 }
 
 async function addToCart(productId) {
@@ -268,7 +274,7 @@ el("cart-items").addEventListener("click", async (e) => {
   }
 });
 
-// ================= checkout (NAYA) =================
+// ================= checkout =================
 async function openCheckout() {
   if (!state.user) {
     toast("Please log in first");
@@ -312,14 +318,12 @@ async function placeOrder() {
     pincode: el("co-pincode").value.trim()
   };
 
-  // pehle yahin check karo, taaki server ko faltu request na jaye
   if (body.full_name.length < 2) { err.textContent = "Please enter your full name"; return; }
   if (!/^\d{10}$/.test(body.phone)) { err.textContent = "Phone number must be 10 digits"; return; }
   if (body.address.length < 5) { err.textContent = "Please enter your full address"; return; }
   if (body.city.length < 2) { err.textContent = "Please enter your city"; return; }
   if (!/^\d{6}$/.test(body.pincode)) { err.textContent = "Pincode must be 6 digits"; return; }
 
-  // button band: galti se do baar dabane par do order na ban jayein
   const btn = el("place-order");
   btn.disabled = true;
   btn.textContent = "Placing order...";
@@ -329,7 +333,7 @@ async function placeOrder() {
     updateCartBadge(0);
     renderConfirmation(order);
     showScreen("confirm");
-    loadProducts(true);   // stock badal gaya hoga, products dobara laao
+    loadProducts(true);
   } catch (e) {
     err.textContent = e.message;
   } finally {
@@ -344,10 +348,48 @@ el("back-to-cart").addEventListener("click", () => showScreen("cart"));
 el("continue-shopping").addEventListener("click", () => showScreen("home"));
 
 // ================= products (home screen) =================
+// NAYA: photo na ho to category ke hisaab se rangeen gradient aur icon
+const CATEGORY_LOOK = {
+  Mobiles: {
+    bg: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+    icon: '<rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/>'
+  },
+  Fashion: {
+    bg: "linear-gradient(135deg, #ec4899, #f97316)",
+    icon: '<path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>'
+  },
+  Home: {
+    bg: "linear-gradient(135deg, #10b981, #06b6d4)",
+    icon: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>'
+  },
+  Books: {
+    bg: "linear-gradient(135deg, #f59e0b, #ef4444)",
+    icon: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>'
+  }
+};
+
+const DEFAULT_LOOK = {
+  bg: "linear-gradient(135deg, #64748b, #94a3b8)",
+  icon: '<path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>'
+};
+
+function placeholder(categoryName) {
+  const look = CATEGORY_LOOK[categoryName] || DEFAULT_LOOK;
+  return `<div class="ph" style="background:${look.bg}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${look.icon}</svg>
+  </div>`;
+}
+
+// NAYA: products aane tak chamakte khaali cards
+function skeletonCards(n) {
+  const card = '<div class="product skeleton"><div class="img"></div><div class="line"></div><div class="line short"></div></div>';
+  return card.repeat(n);
+}
+
 function productCard(p) {
   const image = p.image_url
     ? `<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`
-    : esc(p.name.charAt(0));
+    : placeholder(p.category);
 
   let note = "";
   if (p.stock === 0) {
@@ -389,10 +431,13 @@ async function loadCategories() {
 
 async function loadProducts(reset) {
   const grid = el("grid");
+  const myRequest = ++state.requestId;   // NAYA: ye meri request ka number hai
 
   if (reset) {
     state.page = 1;
-    grid.innerHTML = "";
+    grid.innerHTML = skeletonCards(4);
+    el("empty").classList.add("hidden");
+    el("load-more").classList.add("hidden");
   }
 
   const params = new URLSearchParams({ page: state.page, page_size: state.pageSize });
@@ -401,8 +446,12 @@ async function loadProducts(reset) {
 
   const res = await fetch("/products?" + params.toString());
   const data = await res.json();
-  state.total = data.total;
 
+  // NAYA: agar tab tak user ne kuch naya search kar diya, to ye purana jawab dikhana galat hoga
+  if (myRequest !== state.requestId) return;
+
+  state.total = data.total;
+  if (reset) grid.innerHTML = "";
   grid.insertAdjacentHTML("beforeend", data.items.map(productCard).join(""));
 
   const shown = grid.children.length;
