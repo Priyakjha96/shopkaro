@@ -28,7 +28,38 @@
       <div id="cart-items"></div>
       <div id="cart-summary" class="cart-summary hidden">
         <div class="cart-total"><span>Total</span><b id="cart-total">₹0</b></div>
-        <button class="primary" disabled>Checkout (coming in Stage 7)</button>
+        <button class="primary" id="checkout-btn">Checkout</button>
+      </div>
+    </section>
+
+    <!-- CHECKOUT (NAYA) -->
+    <section id="screen-checkout" class="hidden">
+      <h2>Checkout</h2>
+      <div class="card">
+        <input id="co-name" class="field" placeholder="Full name">
+        <input id="co-phone" class="field" inputmode="numeric" maxlength="10" placeholder="Phone (10 digits)">
+        <input id="co-address" class="field" placeholder="Address (house, street, area)">
+        <input id="co-city" class="field" placeholder="City">
+        <input id="co-pincode" class="field" inputmode="numeric" maxlength="6" placeholder="Pincode (6 digits)">
+      </div>
+      <div class="cart-summary">
+        <div class="cart-total"><span>Order total</span><b id="co-total">₹0</b></div>
+        <p class="muted">Payment: Cash on delivery</p>
+        <button class="primary" id="place-order">Place order</button>
+        <p class="error" id="co-error"></p>
+        <button class="link-btn" id="back-to-cart">Back to cart</button>
+      </div>
+    </section>
+
+    <!-- ORDER PLACED (NAYA) -->
+    <section id="screen-confirm" class="hidden">
+      <div class="card confirm">
+        <h2>Order placed!</h2>
+        <p class="muted" id="cf-id"></p>
+        <div id="cf-items"></div>
+        <div class="cart-total"><span>Total</span><b id="cf-total"></b></div>
+        <p class="muted" id="cf-address"></p>
+        <button class="primary" id="continue-shopping">Continue shopping</button>
       </div>
     </section>
 

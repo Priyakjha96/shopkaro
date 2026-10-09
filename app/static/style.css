@@ -107,3 +107,7 @@ body {
 .toast { position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%); background: #111827; color: #fff; padding: 10px 16px; border-radius: 20px; font-size: 14px; z-index: 20; max-width: 90%; text-align: center; }
 .bottom-nav a { cursor: pointer; }
 .hidden { display: none !important; }
+/* STAGE 7B - NAYA */
+.link-btn { display: block; margin: 12px auto 0; border: none; background: none; color: #4f46e5; font-size: 14px; }
+.confirm h2 { margin-top: 0; color: #15803d; }
+.row-line { display: flex; justify-content: space-between; padding: 8px 0; border-top: 1px solid #eee; font-size: 14px; }

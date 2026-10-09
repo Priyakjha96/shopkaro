@@ -63,16 +63,23 @@ async function api(path, options = {}) {
   return data;
 }
 
-// ================= screens (Home, Cart, Account) =================
+// ================= screens =================
+const SCREENS = ["home", "cart", "account", "checkout", "confirm"];  // NAYA: checkout, confirm
+
 function showScreen(name) {
-  ["home", "cart", "account"].forEach(s => {
+  SCREENS.forEach(s => {
     el("screen-" + s).classList.toggle("hidden", s !== name);
   });
+
+  // NAYA: checkout pe Cart tab, confirm pe Home tab chamakta rahe
+  const navName = name === "checkout" ? "cart" : name === "confirm" ? "home" : name;
   document.querySelectorAll(".bottom-nav a").forEach(a => {
-    a.classList.toggle("active", a.dataset.screen === name);
+    a.classList.toggle("active", a.dataset.screen === navName);
   });
+
   if (name === "cart") loadCart();
   if (name === "account") renderAccount();
+  window.scrollTo(0, 0);
 }
 
 document.querySelectorAll(".bottom-nav a").forEach(a => {
@@ -153,6 +160,10 @@ function logout() {
   localStorage.removeItem("shopkaro_token");
   state.user = null;
   updateCartBadge(0);
+  // NAYA: checkout ka bhara hua address agle user ko na dikhe
+  ["co-name", "co-phone", "co-address", "co-city", "co-pincode"].forEach(id => {
+    el(id).value = "";
+  });
   renderAccount();
 }
 
@@ -256,6 +267,81 @@ el("cart-items").addEventListener("click", async (e) => {
     toast(err.message);
   }
 });
+
+// ================= checkout (NAYA) =================
+async function openCheckout() {
+  if (!state.user) {
+    toast("Please log in first");
+    showScreen("account");
+    return;
+  }
+  try {
+    const cart = await api("/cart");
+    if (cart.items.length === 0) {
+      toast("Your cart is empty");
+      return;
+    }
+    el("co-total").textContent = money(cart.total);
+    if (!el("co-name").value) el("co-name").value = state.user.name;
+    el("co-error").textContent = "";
+    showScreen("checkout");
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function renderConfirmation(order) {
+  el("cf-id").textContent = "Order #" + order.id + " (" + order.status + ")";
+  el("cf-items").innerHTML = order.items
+    .map(i => `<div class="row-line"><span>${esc(i.name)} × ${i.quantity}</span><span>${money(i.line_total)}</span></div>`)
+    .join("");
+  el("cf-total").textContent = money(order.total);
+  el("cf-address").textContent =
+    "Delivering to " + order.full_name + ", " + order.address + ", " + order.city + " - " + order.pincode;
+}
+
+async function placeOrder() {
+  const err = el("co-error");
+  err.textContent = "";
+
+  const body = {
+    full_name: el("co-name").value.trim(),
+    phone: el("co-phone").value.trim(),
+    address: el("co-address").value.trim(),
+    city: el("co-city").value.trim(),
+    pincode: el("co-pincode").value.trim()
+  };
+
+  // pehle yahin check karo, taaki server ko faltu request na jaye
+  if (body.full_name.length < 2) { err.textContent = "Please enter your full name"; return; }
+  if (!/^\d{10}$/.test(body.phone)) { err.textContent = "Phone number must be 10 digits"; return; }
+  if (body.address.length < 5) { err.textContent = "Please enter your full address"; return; }
+  if (body.city.length < 2) { err.textContent = "Please enter your city"; return; }
+  if (!/^\d{6}$/.test(body.pincode)) { err.textContent = "Pincode must be 6 digits"; return; }
+
+  // button band: galti se do baar dabane par do order na ban jayein
+  const btn = el("place-order");
+  btn.disabled = true;
+  btn.textContent = "Placing order...";
+
+  try {
+    const order = await api("/orders", { method: "POST", body: JSON.stringify(body) });
+    updateCartBadge(0);
+    renderConfirmation(order);
+    showScreen("confirm");
+    loadProducts(true);   // stock badal gaya hoga, products dobara laao
+  } catch (e) {
+    err.textContent = e.message;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Place order";
+  }
+}
+
+el("checkout-btn").addEventListener("click", openCheckout);
+el("place-order").addEventListener("click", placeOrder);
+el("back-to-cart").addEventListener("click", () => showScreen("cart"));
+el("continue-shopping").addEventListener("click", () => showScreen("home"));
 
 // ================= products (home screen) =================
 function productCard(p) {
