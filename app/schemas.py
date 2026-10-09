@@ -72,3 +72,30 @@ class ProductPage(BaseModel):
     total: int
     page: int
     page_size: int
+# NAYA
+class CartAdd(BaseModel):
+    product_id: int
+    quantity: int = Field(default=1, ge=1, le=20)
+
+
+# NAYA
+class CartUpdate(BaseModel):
+    quantity: int = Field(ge=1, le=20)
+
+
+# NAYA
+class CartItemOut(BaseModel):
+    product_id: int
+    name: str
+    price: float
+    quantity: int
+    line_total: float
+    stock: int
+    image_url: str | None = None
+
+
+# NAYA
+class CartOut(BaseModel):
+    items: list[CartItemOut]
+    total: float
+    item_count: int

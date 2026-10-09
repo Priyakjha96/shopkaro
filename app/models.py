@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -13,7 +13,6 @@ class User(Base):
     role = Column(String, nullable=False, default="customer")
 
 
-# NAYA
 class Category(Base):
     __tablename__ = "categories"
 
@@ -21,7 +20,6 @@ class Category(Base):
     name = Column(String, unique=True, nullable=False)
 
 
-# NAYA
 class Product(Base):
     __tablename__ = "products"
 
@@ -34,3 +32,16 @@ class Product(Base):
     image_url = Column(String, nullable=True)
 
     category = relationship("Category")
+
+
+# NAYA
+class CartItem(Base):
+    __tablename__ = "cart_items"
+    __table_args__ = (UniqueConstraint("user_id", "product_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
+    quantity = Column(Integer, nullable=False, default=1)
+
+    product = relationship("Product")

@@ -6,14 +6,15 @@ from fastapi.staticfiles import StaticFiles
 
 from app import models
 from app.database import Base, engine
-from app.routes import auth, admin, products  # NAYA: products
+from app.routes import auth, admin, products, cart  # NAYA: cart
 
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="ShopKaro")
 app.include_router(auth.router)
 app.include_router(admin.router)
-app.include_router(products.router)  # NAYA
+app.include_router(products.router)
+app.include_router(cart.router)  # NAYA
 
 STATIC_DIR = Path(__file__).parent / "static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
