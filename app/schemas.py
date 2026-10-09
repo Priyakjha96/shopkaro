@@ -99,3 +99,33 @@ class CartOut(BaseModel):
     items: list[CartItemOut]
     total: float
     item_count: int
+    # NAYA
+class CheckoutRequest(BaseModel):
+    full_name: str = Field(min_length=2)
+    phone: str = Field(pattern=r"^\d{10}$")
+    address: str = Field(min_length=5)
+    city: str = Field(min_length=2)
+    pincode: str = Field(pattern=r"^\d{6}$")
+
+
+# NAYA
+class OrderItemOut(BaseModel):
+    product_id: int
+    name: str
+    price: float
+    quantity: int
+    line_total: float
+
+
+# NAYA
+class OrderOut(BaseModel):
+    id: int
+    status: str
+    total: float
+    created_at: str
+    full_name: str
+    phone: str
+    address: str
+    city: str
+    pincode: str
+    items: list[OrderItemOut]
