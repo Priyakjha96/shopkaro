@@ -583,8 +583,16 @@ async function loadProducts(reset) {
   if (state.search) params.set("search", state.search);
   if (state.category) params.set("category_id", state.category);
 
-  const res = await fetch("/products?" + params.toString());
-  const data = await res.json();
+    let data;
+  try {
+    const res = await fetch("/products?" + params.toString());
+    data = await res.json();
+  } catch (e) {
+    if (myRequest === state.requestId) {
+      grid.innerHTML = '<p class="empty" style="grid-column: 1 / -1">Could not load products. Please check your internet connection.</p>';
+    }
+    return;
+  }
 
   if (myRequest !== state.requestId) return;
 
