@@ -33,7 +33,8 @@ const state = {
   total: 0,
   user: null,
   authMode: "login",
-  requestId: 0   // NAYA: purane search ke jawab ko pehchanne ke liye
+  requestId: 0,
+  adminFilter: ""   // NAYA: admin screen ka status filter
 };
 
 // ================= server se baat (token ke saath) =================
@@ -50,8 +51,9 @@ async function api(path, options = {}) {
   } catch (e) {}
 
   if (!res.ok) {
-    if ((res.status === 401 || res.status === 403) && token) {
-      logout();   // token expire ya galat
+    // NAYA: sirf 401 (token kharab ya expire) par logout. 403 ka matlab "tum admin nahi ho" bhi ho sakta hai
+    if (res.status === 401 && token) {
+      logout();
     }
     let detail = "Something went wrong";
     if (data && typeof data.detail === "string") {
@@ -65,36 +67,35 @@ async function api(path, options = {}) {
 }
 
 // ================= screens =================
-const SCREENS = ["home", "cart", "account", "checkout", "confirm"];
+const SCREENS = ["home", "cart", "account", "checkout", "confirm", "orders", "admin"];  // NAYA: orders, admin
 
 function showScreen(name) {
   SCREENS.forEach(s => {
     el("screen-" + s).classList.toggle("hidden", s !== name);
   });
 
-  // checkout pe Cart tab, confirm pe Home tab chamakta rahe
-  const navName = name === "checkout" ? "cart" : name === "confirm" ? "home" : name;
+  // checkout pe Cart tab, confirm pe Home tab, admin pe Account tab chamakta rahe
+  let navName = name;
+  if (name === "checkout") navName = "cart";
+  if (name === "confirm") navName = "home";
+  if (name === "admin") navName = "account";   // NAYA
+
   document.querySelectorAll(".bottom-nav a").forEach(a => {
     a.classList.toggle("active", a.dataset.screen === navName);
   });
 
   if (name === "cart") loadCart();
   if (name === "account") renderAccount();
+  if (name === "orders") loadOrders();            // NAYA
+  if (name === "admin") loadAdminOrders();        // NAYA
   window.scrollTo(0, 0);
 }
 
+// NAYA: Orders tab ab asli screen kholta hai (pehle sirf popup aata tha)
 document.querySelectorAll(".bottom-nav a").forEach(a => {
-  a.addEventListener("click", () => {
-    const screen = a.dataset.screen;
-    if (screen === "orders") {
-      toast("Orders will be added in Stage 8");
-      return;
-    }
-    showScreen(screen);
-  });
+  a.addEventListener("click", () => showScreen(a.dataset.screen));
 });
 
-// NAYA: upar ke cart icon se bhi cart khule
 el("top-cart").addEventListener("click", () => showScreen("cart"));
 
 // ================= account: login, register, logout =================
@@ -107,6 +108,8 @@ function renderAccount() {
     el("profile-email").textContent = state.user.email;
     el("profile-role").textContent = state.user.role;
   }
+  // NAYA: admin button sirf admin ko dikhe
+  el("open-admin").classList.toggle("hidden", !(loggedIn && state.user.role === "admin"));
 }
 
 function setAuthMode(mode) {
@@ -180,7 +183,6 @@ el("logout-btn").addEventListener("click", () => {
 });
 
 // ================= cart =================
-// NAYA: ab do jagah badge hai (upar icon aur neeche bar), dono update hote hain
 function updateCartBadge(count) {
   ["cart-badge", "cart-badge-top"].forEach(id => {
     const badge = el(id);
@@ -346,9 +348,147 @@ el("checkout-btn").addEventListener("click", openCheckout);
 el("place-order").addEventListener("click", placeOrder);
 el("back-to-cart").addEventListener("click", () => showScreen("cart"));
 el("continue-shopping").addEventListener("click", () => showScreen("home"));
+el("view-orders").addEventListener("click", () => showScreen("orders"));   // NAYA
+
+// ================= orders (NAYA) =================
+function formatDate(iso) {
+  // server UTC time bhejta hai (bina Z ke), isliye Z jodke browser ke local time me badalte hain
+  const d = new Date(iso + "Z");
+  return d.toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+}
+
+function customerActions(o) {
+  if (o.status !== "placed") return "";
+  return `<div class="order-actions">
+    <button class="btn-small danger" data-act="cancel" data-id="${o.id}">Cancel order</button>
+  </div>`;
+}
+
+function adminActions(o) {
+  const btn = (status, label, cls) =>
+    `<button class="btn-small ${cls}" data-act="status" data-id="${o.id}" data-status="${status}">${label}</button>`;
+
+  if (o.status === "placed") {
+    return `<div class="order-actions">${btn("shipped", "Mark shipped", "solid")}${btn("cancelled", "Cancel", "danger")}</div>`;
+  }
+  if (o.status === "shipped") {
+    return `<div class="order-actions">${btn("delivered", "Mark delivered", "solid")}${btn("cancelled", "Cancel", "danger")}</div>`;
+  }
+  return "";
+}
+
+function orderCard(o, admin) {
+  const items = o.items
+    .map(i => `<div class="row-line"><span>${esc(i.name)} × ${i.quantity}</span><span>${money(i.line_total)}</span></div>`)
+    .join("");
+
+  const customer = admin
+    ? `<p class="muted">Customer: ${esc(o.customer_name)} (${esc(o.customer_email)})<br>Phone: ${esc(o.phone)}</p>`
+    : "";
+
+  return `
+    <div class="order-card">
+      <div class="order-head">
+        <div>
+          <b>Order #${o.id}</b>
+          <div class="muted">${formatDate(o.created_at)}</div>
+        </div>
+        <span class="pill ${esc(o.status)}">${esc(o.status)}</span>
+      </div>
+      ${customer}
+      ${items}
+      <div class="cart-total" style="margin-top:8px"><span>Total</span><b>${money(o.total)}</b></div>
+      <p class="muted">Delivering to ${esc(o.full_name)}, ${esc(o.address)}, ${esc(o.city)} - ${esc(o.pincode)}</p>
+      ${admin ? adminActions(o) : customerActions(o)}
+    </div>`;
+}
+
+async function loadOrders() {
+  const box = el("orders-list");
+
+  if (!state.user) {
+    box.innerHTML = '<p class="empty">Please log in to see your orders</p>';
+    return;
+  }
+
+  box.innerHTML = '<p class="empty">Loading...</p>';
+  try {
+    const orders = await api("/orders");
+    box.innerHTML = orders.length === 0
+      ? '<p class="empty">You have no orders yet</p>'
+      : orders.map(o => orderCard(o, false)).join("");
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+// "Cancel order" button (poori list pe ek hi kaan)
+el("orders-list").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act='cancel']");
+  if (!btn) return;
+  if (!confirm("Cancel this order?")) return;
+
+  try {
+    await api("/orders/" + btn.dataset.id + "/cancel", { method: "POST" });
+    toast("Order cancelled");
+    loadOrders();
+    loadProducts(true);   // stock waapas badha hoga
+  } catch (err) {
+    toast(err.message);
+  }
+});
+
+// ================= admin orders (NAYA) =================
+async function loadAdminOrders() {
+  const box = el("admin-orders");
+  box.innerHTML = '<p class="empty">Loading...</p>';
+
+  try {
+    const query = state.adminFilter ? "?status=" + state.adminFilter : "";
+    const orders = await api("/admin/orders" + query);
+    box.innerHTML = orders.length === 0
+      ? '<p class="empty">No orders found</p>'
+      : orders.map(o => orderCard(o, true)).join("");
+  } catch (e) {
+    box.innerHTML = '<p class="empty">' + esc(e.message) + "</p>";
+  }
+}
+
+el("open-admin").addEventListener("click", () => showScreen("admin"));
+el("admin-back").addEventListener("click", () => showScreen("account"));
+
+el("admin-filters").querySelectorAll(".chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    el("admin-filters").querySelectorAll(".chip").forEach(c => c.classList.remove("active"));
+    chip.classList.add("active");
+    state.adminFilter = chip.dataset.status;
+    loadAdminOrders();
+  });
+});
+
+// "Mark shipped / Mark delivered / Cancel" buttons
+el("admin-orders").addEventListener("click", async (e) => {
+  const btn = e.target.closest("button[data-act='status']");
+  if (!btn) return;
+
+  const status = btn.dataset.status;
+  if (status === "cancelled" && !confirm("Cancel this order? Stock will be added back.")) return;
+
+  try {
+    await api("/admin/orders/" + btn.dataset.id + "/status", {
+      method: "PUT",
+      body: JSON.stringify({ status })
+    });
+    toast("Order " + status);
+    loadAdminOrders();
+    loadProducts(true);
+  } catch (err) {
+    toast(err.message);
+    loadAdminOrders();
+  }
+});
 
 // ================= products (home screen) =================
-// NAYA: photo na ho to category ke hisaab se rangeen gradient aur icon
 const CATEGORY_LOOK = {
   Mobiles: {
     bg: "linear-gradient(135deg, #6366f1, #8b5cf6)",
@@ -380,7 +520,6 @@ function placeholder(categoryName) {
   </div>`;
 }
 
-// NAYA: products aane tak chamakte khaali cards
 function skeletonCards(n) {
   const card = '<div class="product skeleton"><div class="img"></div><div class="line"></div><div class="line short"></div></div>';
   return card.repeat(n);
@@ -431,7 +570,7 @@ async function loadCategories() {
 
 async function loadProducts(reset) {
   const grid = el("grid");
-  const myRequest = ++state.requestId;   // NAYA: ye meri request ka number hai
+  const myRequest = ++state.requestId;
 
   if (reset) {
     state.page = 1;
@@ -447,7 +586,6 @@ async function loadProducts(reset) {
   const res = await fetch("/products?" + params.toString());
   const data = await res.json();
 
-  // NAYA: agar tab tak user ne kuch naya search kar diya, to ye purana jawab dikhana galat hoga
   if (myRequest !== state.requestId) return;
 
   state.total = data.total;

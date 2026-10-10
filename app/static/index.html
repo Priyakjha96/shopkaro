@@ -81,7 +81,28 @@
         <div class="cart-total"><span>Total</span><b id="cf-total"></b></div>
         <p class="muted" id="cf-address"></p>
         <button class="primary" id="continue-shopping">Continue shopping</button>
+        <button class="link-btn" id="view-orders">View my orders</button>
       </div>
+    </section>
+
+    <!-- MY ORDERS (NAYA) -->
+    <section id="screen-orders" class="hidden">
+      <h2>My orders</h2>
+      <div id="orders-list"></div>
+    </section>
+
+    <!-- ADMIN: ORDERS (NAYA) -->
+    <section id="screen-admin" class="hidden">
+      <h2>Admin: all orders</h2>
+      <div class="chips" id="admin-filters">
+        <span class="chip active" data-status="">All</span>
+        <span class="chip" data-status="placed">Placed</span>
+        <span class="chip" data-status="shipped">Shipped</span>
+        <span class="chip" data-status="delivered">Delivered</span>
+        <span class="chip" data-status="cancelled">Cancelled</span>
+      </div>
+      <div id="admin-orders"></div>
+      <button class="link-btn" id="admin-back">Back to account</button>
     </section>
 
     <!-- ACCOUNT -->
@@ -102,6 +123,7 @@
         <h3 id="profile-name"></h3>
         <p class="muted" id="profile-email"></p>
         <p class="muted">Role: <span id="profile-role"></span></p>
+        <button class="primary secondary hidden" id="open-admin">Manage orders (admin)</button>
         <button class="primary" id="logout-btn">Logout</button>
       </div>
     </section>
