@@ -129,3 +129,12 @@ class OrderOut(BaseModel):
     city: str
     pincode: str
     items: list[OrderItemOut]
+# NAYA
+class StatusUpdate(BaseModel):
+    status: str
+
+
+# NAYA
+class AdminOrderOut(OrderOut):
+    customer_name: str
+    customer_email: str
