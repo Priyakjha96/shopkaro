@@ -1,3 +1,4 @@
+import os
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -9,7 +10,9 @@ from sqlalchemy.orm import Session
 from app import models
 from app.database import get_db
 
-SECRET_KEY = "shopkaro-dev-secret-key-change-me-before-deploy-12345"
+SECRET_KEY = os.getenv("SECRET_KEY", "shopkaro-dev-secret-key-change-me-before-deploy-12345")
+if os.getenv("RENDER") and SECRET_KEY.startswith("shopkaro-dev-secret-key"):
+    raise RuntimeError("Set a real SECRET_KEY in the environment before deploying")
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_MINUTES = 60
 
