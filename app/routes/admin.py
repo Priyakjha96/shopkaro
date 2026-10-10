@@ -1,8 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session, selectinload
 
 from app import models, schemas
 from app.database import get_db
+from app.routes.orders import (
+    ALLOWED_NEXT,
+    claim_status,
+    load_order,
+    restock_and_cancel,
+    to_order_out,
+)
 from app.routes.products import to_product_out
 from app.security import require_admin
 
@@ -74,3 +81,63 @@ def update_product(product_id: int, data: schemas.ProductUpdate, db: Session = D
     db.commit()
     db.refresh(product)
     return to_product_out(product)
+
+
+@router.get("/orders", response_model=list[schemas.AdminOrderOut])
+def list_all_orders(
+    status: str | None = None,
+    limit: int = Query(50, ge=1, le=100),
+    db: Session = Depends(get_db),
+):
+    query = (
+        db.query(models.Order, models.User)
+        .join(models.User, models.User.id == models.Order.user_id)
+        .options(selectinload(models.Order.items))
+    )
+    if status:
+        query = query.filter(models.Order.status == status)
+
+    rows = query.order_by(models.Order.id.desc()).limit(limit).all()
+
+    result = []
+    for order, user in rows:
+        data = to_order_out(order)
+        data["customer_name"] = user.name
+        data["customer_email"] = user.email
+        result.append(data)
+    return result
+
+
+@router.put("/orders/{order_id}/status", response_model=schemas.OrderOut)
+def update_order_status(
+    order_id: int,
+    data: schemas.StatusUpdate,
+    db: Session = Depends(get_db),
+):
+    order = db.query(models.Order).filter(models.Order.id == order_id).first()
+    if order is None:
+        raise HTTPException(status_code=404, detail="Order not found")
+
+    current = order.status
+    new_status = data.status
+
+    if new_status not in ALLOWED_NEXT.get(current, set()):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Cannot move order from {current} to {new_status}",
+        )
+
+    try:
+        if new_status == "cancelled":
+            ok = restock_and_cancel(db, order_id, {current})
+        else:
+            ok = claim_status(db, order_id, current, new_status)
+
+        if not ok:
+            raise HTTPException(status_code=409, detail="Order was just changed. Please refresh.")
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    return to_order_out(load_order(db, order_id))
