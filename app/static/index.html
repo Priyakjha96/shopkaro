@@ -29,6 +29,29 @@
     </div>
   </header>
 
+  <!-- NAV: ab header ke turant baad (phone pe neeche, laptop pe upar dikhta hai) -->
+  <nav class="bottom-nav">
+    <a data-screen="home" class="active">
+      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </a>
+    <a data-screen="cart">
+      <span class="icon-wrap">
+        <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+        <span class="badge hidden" id="cart-badge">0</span>
+      </span>
+      <span>Cart</span>
+    </a>
+    <a data-screen="orders">
+      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span>Orders</span>
+    </a>
+    <a data-screen="account">
+      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Account</span>
+    </a>
+  </nav>
+
   <main class="content">
 
     <!-- HOME -->
@@ -85,13 +108,13 @@
       </div>
     </section>
 
-    <!-- MY ORDERS (NAYA) -->
+    <!-- MY ORDERS -->
     <section id="screen-orders" class="hidden">
       <h2>My orders</h2>
       <div id="orders-list"></div>
     </section>
 
-    <!-- ADMIN: ORDERS (NAYA) -->
+    <!-- ADMIN: ORDERS -->
     <section id="screen-admin" class="hidden">
       <h2>Admin: all orders</h2>
       <div class="chips" id="admin-filters">
@@ -131,28 +154,6 @@
   </main>
 
   <div class="toast hidden" id="toast"></div>
-
-  <nav class="bottom-nav">
-    <a data-screen="home" class="active">
-      <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-      <span>Home</span>
-    </a>
-    <a data-screen="cart">
-      <span class="icon-wrap">
-        <svg viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
-        <span class="badge hidden" id="cart-badge">0</span>
-      </span>
-      <span>Cart</span>
-    </a>
-    <a data-screen="orders">
-      <svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
-      <span>Orders</span>
-    </a>
-    <a data-screen="account">
-      <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      <span>Account</span>
-    </a>
-  </nav>
 
   <script src="/static/app.js"></script>
 </body>
